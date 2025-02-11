@@ -1,0 +1,13 @@
+----------------MySQL migration--------
+
+mysqldump -h <sourceservername> -u <user> -p --databases <databasename> > backup1.sql
+
+
+mysql -h <destinationservername> -u <user> -p --force <databasename> < backup.sql
+
+
+----------storageaccount migration----------
+
+azcopy copy "source sas" "destination sas" --recursive=true
+
+az storage blob copy start --source-uri "source sas" --destination-container containername --destination-blob <destination_blob_name> --account-name storageaccountname
