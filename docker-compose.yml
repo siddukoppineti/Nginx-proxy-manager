@@ -1,0 +1,99 @@
+version: '3.8'
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:2.11.3'
+    restart: unless-stopped
+    container_name: nginx-proxy-manager
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:81"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 10s
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    environment:
+      DB_MYSQL_HOST: ""  #mysql host name
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "user" #your user name
+      DB_MYSQL_PASSWORD: "password" #your password
+      DB_MYSQL_NAME: "npm"
+    volumes:
+      - /mnt/data:/data  
+      - /mnt/letsencrypt:/etc/letsencrypt
+
+-------------------------------------------------------
+version: '3.8'
+services:
+  npmgraf:
+    image: smilebasti/npmgrafstats:latest # change to ghcr.io/smilebasti/npmgrafstats if you prefer Github Container Registry
+    restart: unless-stopped
+    environment:
+      REDIRECTION_LOGS: 'TRUE' # TRUE or FALSE or ONLY
+      INTERNAL_LOGS: 'TRUE' # see Github wiki for more information
+      MONITORING_LOGS: 'TRUE' # see Github wiki for more information
+      INFLUX_HOST: 'IP:8086' # use host IP
+      INFLUX_BUCKET: 'npmgrafstats'
+      INFLUX_ORG: 'npmgrafstats'
+      INFLUX_TOKEN: ''
+    volumes:
+      - /mnt/data/logs:/logs
+      - /home/GeoLite2-City_20250128:/geolite
+    depends_on:
+      - geoipupdate
+
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: 'setup'
+      DOCKER_INFLUXDB_INIT_USERNAME: ''
+      DOCKER_INFLUXDB_INIT_PASSWORD: '' # atleast 8 characters
+      DOCKER_INFLUXDB_INIT_ORG: 'npmgrafstats'
+      DOCKER_INFLUXDB_INIT_BUCKET: 'npmgrafstats'
+    volumes:
+      # Mount for influxdb data directory and configuration
+      - /home/influxdbv2:/var/lib/influxdb2
+    ports:
+      - '8086:8086'
+
+  geoipupdate:
+    image: maxmindinc/geoipupdate
+    restart: unless-stopped
+    environment:
+      GEOIPUPDATE_ACCOUNT_ID: ''
+      GEOIPUPDATE_LICENSE_KEY: ''
+      GEOIPUPDATE_EDITION_IDS: 'GeoLite2-City'
+      GEOIPUPDATE_FREQUENCY: 24
+    volumes:
+      - /home/GeoLite2-City_20250128:/usr/share/GeoIP
+
+
+-------------------------------------------------------------
+version: "3"
+
+services:
+  loki:
+    image: grafana/loki:2.8.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - default
+    volumes:
+      - /home/loki-data:/loki # Loki persistent data folder
+      - /home/config-loki:/etc/loki # Loki config folder
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.8.0
+    volumes:
+      - /mnt/data/logs/:/var/log # path to your NPM logs
+      - /home/config.yaml:/etc/promtail/config.yaml # Promtail config folder
+    networks:
+      - default
+    restart: unless-stopped
+
