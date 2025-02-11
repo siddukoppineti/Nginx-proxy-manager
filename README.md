@@ -5,4 +5,5 @@ I have setup grafana dashboards for monitoring this and you can get those compos
 
 and for reference
 link for Loki setup - https://medium.com/@williamdonze/grafana-monitor-nginx-proxy-manager-website-4d03b60c761f
+
 link for Influxdb setup - https://github.com/smilebasti/npmGrafStats
